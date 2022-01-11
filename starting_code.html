@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>jQuery UI Autocomplete - Categories</title>
+  <link rel="stylesheet" href="jquery-ui.css">
+  <script src="jquery-1.11.3.js"></script>
+  <script src="jquery-ui.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ui-autocomplete {
+      max-height: 100px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+  </style>
+  <script>
+		function myAutoCompleteWidgetConstructor() {
+      this._super();
+      this.widget().menu( "option", "items", "> :not(.ui-autocomplete-category)" );
+		};
+		function renderAutoCompleteMenuItem(ul, item) {
+			terms = this.term.split(',');
+			term = terms[terms.length - 1].trim();
+			// ToDo: Complete this function for defining how to render each menu item that
+			//       will be shown in the custom autocomplete widget
+      regex = new RegExp('(' + term + ')', 'gi');
+      regex2 = new RegExp('(' + term + ')', 'i');
+      if (term.length === 1) {
+        t = item.label.replace(regex, "<a style='color: blue; font-weight: normal;'>$&</a>");
+      } else {
+        t = item.label.replace(regex2, "<a style='color: blue; font-weight: normal;'>$&</a>");
+      }
+      return $("<li></li>").data("item.autocomplete", item)
+      .append("<a style='height:30px;'><div style='width: 100%; float: left; overflow: hidden; white-space: nowrap; font-weight: bold; text-overflow: ellipsis; text-align: left;'>"
+      + t
+      + "</div><div style='right: 0; position: relative; float: right; font-size: 11px; margin-top: -15px; color: #b3b3b3;'"
+      + "</div></a>")
+      .appendTo(ul);
+		};
+		function renderAutoCompleteMenu(ul, items) {
+      var that = this;
+      currentCategory = "";
+			// ToDo: Complete this function for defining how to render the menu
+			$.each(items, function (index, item) {
+        var li;
+        if (item.category != currentCategory) {
+          ul.append("<li class='ui-autocomplete-category'><b style='color: red'>" + item.category + "</b></li>")
+          currentCategory = item.category;
+        }
+        li = that._renderItemData(ul, item);
+        if (item.category) {
+          li.attr("aria-label", item.category + " : " + item.label);
+        }
+			})
+		};
+		$.widget( "custom.myautocomplete", $.ui.autocomplete, {
+			_create: myAutoCompleteWidgetConstructor,
+			_renderItem: renderAutoCompleteMenuItem,
+			_renderMenu: renderAutoCompleteMenu
+		});
+  </script>
+  
+	<script>
+		function split( val ) {
+			return val.split( /,\s*/ );
+		}
+		function extractLast( term ) {
+			return split( term ).pop();
+    }
+    
+		function onDocumentReady() {
+      $( "#search" )
+      .bind( "keydown", function( event ) {
+        if ( event.keyCode === $.ui.keyCode.TAB &&
+            $( this ).autocomplete( "instance" ).menu.active ) {
+          event.preventDefault();
+        }
+      })
+      .myautocomplete({
+				delay: 0,
+				source: function (request, response) {
+          $.ajax({
+            url: 'https://webproject.cse.ust.hk:8046/get-json-cors.php',
+            type: 'get',
+            success: function(data) {
+              for (i=0; i<data.length; i++) 
+                $('#search').append('"label" : "'+data[i].label+'", "category" : "'+data[i].category+'",</br>');
+              response($.ui.autocomplete.filter(data, extractLast(request.term)));
+            },
+            error: function(error) {
+              $('#search').text('Something went wrong');
+            }
+          });
+        },
+        focus: function() {
+          // prevent value inserted on focus
+          return false;
+        },
+        select: function( event, ui ) {
+          var terms = split( this.value );
+          // remove the current input
+          terms.pop();
+          // add the selected item
+          terms.push( ui.item.value );
+          // add placeholder to get the comma-and-space at the end
+          terms.push( "" );
+          this.value = terms.join( ", " );
+          return false;
+        }
+      });
+		};
+		$( document ).ready(onDocumentReady);
+	</script>
+</head>
+<body>
+ 
+<label for="search">Search: </label>
+<input id="search">
+
+ 
+</body>
+</html>
